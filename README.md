@@ -548,18 +548,19 @@ The previous example can be re-written to use this form:
 ## socket.parseArp (buffer, offset)
 
 The `parseArp()` method extract an Arp message from a Buffer at a specific offset.
-The Arp message format will look like this.
-{
- "arp_hd": 1,
- "arp_pr": 2048,
- "arp_hdl": 6,
- "arp_prl": 4,
- "arp_op": 1,
- "arp_sha": [ "0", "f", "53", "20", "ad", "70" ],
- "arp_spa": [ 10, 193, 31, 251 ],
- "arp_dha": [ "0", "0", "0", "0", "0", "0" ],
- "arp_dpa": [ 10, 193, 31, 245 ]
-}
+The Arp message format will look like this:
+
+    {
+         "arp_hd": 1,
+         "arp_pr": 2048,
+         "arp_hdl": 6,
+         "arp_prl": 4,
+         "arp_op": 1,
+         "arp_sha": [ "0", "f", "53", "20", "ad", "70" ],
+         "arp_spa": [ 10, 193, 31, 251 ],
+         "arp_dha": [ "0", "0", "0", "0", "0", "0" ],
+         "arp_dpa": [ 10, 193, 31, 245 ]
+    }
 
 
 ## socket.fromArp (arpMesage)
