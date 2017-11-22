@@ -313,7 +313,8 @@ The optional `options` parameter is an object, and can contain the following
 items:
 
  * `addressFamily` - Either the constant `raw.AddressFamily.IPv4` or the
-   constant `raw.AddressFamily.IPv6`, defaults to the constant
+   constant `raw.AddressFamily.IPv6`, or the constants raw.AddressFamily.Arp,
+   or the constants raw.AddressFamily.Packet, defaults to the constant
    `raw.AddressFamily.IPv4`
  * `protocol` - Either one of the constants defined in the `raw.Protocol`
    object or the protocol number to use for the socket, defaults to the
@@ -325,6 +326,9 @@ items:
  * `checksumOffset` - When `generateChecksums` is `true` specifies how many
    bytes to index into the send buffer to write automatically generated
    checksums, defaults to `0`
+ * `iface` - interface name. Used only for Arp or Packet mode to select
+   which interface to use.
+ * `ip` - ip address. Not currently used.
 
 An exception will be thrown if the underlying raw socket could not be created.
 The error will be an instance of the `Error` class.
@@ -440,11 +444,12 @@ data to be sent.  The `length` parameter specifies how many bytes from
 `address` parameter contains the dotted quad formatted IP address of the
 remote host to send the data to, e.g `192.168.1.254`, for IPv6 raw sockets the
 `address` parameter contains the compressed formatted IP address of the remote
-host to send the data to, e.g. `fe80::a00:27ff:fe2a:3427`.  If provided the
-optional `beforeCallback` function is called right before the data is actually
-sent using the underlying raw socket, giving users the opportunity to perform
-pre-send actions such as setting a socket option, e.g. the IP header TTL.  No
-arguments are passed to the `beforeCallback` function.  The `afterCallback`
+host to send the data to, e.g. `fe80::a00:27ff:fe2a:3427` and for Arp packets
+the address should be a buffer containing the destination mac address.
+If provided the optional `beforeCallback` function is called right before the 
+data is actually sent using the underlying raw socket, giving users the opportunity 
+to perform pre-send actions such as setting a socket option, e.g. the IP header TTL.  
+No arguments are passed to the `beforeCallback` function.  The `afterCallback`
 function is called once the data has been sent.  The following arguments will
 be passed to the `afterCallback` function:
 
@@ -480,6 +485,25 @@ after the data has been sent:
     }
 
     socket.send (buffer, 0, buffer.length, target, beforeSend, afterSend);
+
+To send an Arp response message, you can use following code.
+
+   let socket = raw.createSocket({addressFamily: Arp.AddressFamily.Arp, iface: "eth0", ip: "10.193.31.239"});
+   socket.on("message", (buffer) => {
+      const msg = socket.parseArp(buffer, 14);
+      let dest = Buffer.alloc(6);
+      for(let i = 0; i < 6; i++) {
+         dest.writeUInt8(parseInt(msg.arp_sha[i], 16), i);
+      }
+      msg.arp_dha = msg.arp_sha;
+      msg.arp_sha = "52:54:00:29:9c:de". split(":");
+      msg.arp_op = 2; // arp reply
+      const tmp = msg.arp_dpa;
+      msg.arp_dpa = msg.arp_spa;
+      msg.arp_spa = tmp;
+      const response = socket.fromArp(msg);
+      socket.send(response, 0, response.length, dest, (rc) => {console.log("response sent.", rc);});
+  });
 
 ## socket.setOption (level, option, buffer, length)
 
@@ -520,6 +544,29 @@ The previous example can be re-written to use this form:
     var option = raw.SocketOption.IP_TTL;
 
     socket.setOption (level, option, 1);
+
+## socket.parseArp (buffer, offset)
+
+The `parseArp()` method extract an Arp message from a Buffer at a specific offset.
+The Arp message format will look like this.
+{
+ "arp_hd": 1,
+ "arp_pr": 2048,
+ "arp_hdl": 6,
+ "arp_prl": 4,
+ "arp_op": 1,
+ "arp_sha": [ "0", "f", "53", "20", "ad", "70" ],
+ "arp_spa": [ 10, 193, 31, 251 ],
+ "arp_dha": [ "0", "0", "0", "0", "0", "0" ],
+ "arp_dpa": [ 10, 193, 31, 245 ]
+}
+
+
+## socket.fromArp (arpMesage)
+
+the `fromArp()` method takes an Arp message and returns a Buffer containing
+a packet including Ethernet Header + Arp Header. This Buffer can then be 
+used to send the packet.
 
 # Example Programs
 
