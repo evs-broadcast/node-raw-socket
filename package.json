@@ -1,6 +1,6 @@
 {
   "name": "raw-socket",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Raw sockets for Node.js.",
   "main": "index.js",
   "directories": {
@@ -13,6 +13,10 @@
     {
       "name": "Stephen Vickers",
       "email": "stephen.vickers.sv@gmail.com"
+    },
+    {
+      "name": "Gilles Dufour",
+      "email": "dufour.gilles@gmail.com"
     } 
   ],
   "repository": {

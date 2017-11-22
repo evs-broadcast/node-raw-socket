@@ -1,4 +1,7 @@
 
+// To disable arp response
+// echo "1" > /proc/sys/net/ipv4/conf/eth0/arp_ignore
+
 var events = require ("events");
 var net = require ("net");
 var raw = require ("./build/Release/raw");
@@ -14,7 +17,9 @@ function _expandConstantObject (object) {
 
 var AddressFamily = {
 	1: "IPv4",
-	2: "IPv6"
+	2: "IPv6",
+        3: "Packet",
+        4: "Arp"
 };
 
 _expandConstantObject (AddressFamily);
@@ -24,7 +29,8 @@ var Protocol = {
 	1: "ICMP",
 	6: "TCP",
 	17: "UDP",
-	58: "ICMPv6"
+	58: "ICMPv6",
+        
 };
 
 _expandConstantObject (Protocol);
@@ -50,7 +56,13 @@ function Socket (options) {
 					: 0),
 			((options && options.addressFamily)
 					? options.addressFamily
-					: AddressFamily.IPv4)
+					: AddressFamily.IPv4),
+                        ((options && options.iface) 
+                                        ? options.iface
+                                        : ""),
+                        ((options && options.ip) 
+                                        ? options.ip
+                                        : "")
 		);
 
 	var me = this;
@@ -92,6 +104,91 @@ Socket.prototype.onRecvReady = function () {
 	}
 }
 
+Socket.prototype.parseArp = function(data, offset) {
+	let arpMessage = {};
+        if (data.length < 28) {
+              throw new Error("Invalid message length");
+	} 
+
+	arpMessage.arp_hd = data.readUInt16BE(offset); // Hardware type
+	offset += 2;
+        arpMessage.arp_pr = data.readUInt16BE(offset); // Protocol Type
+        offset += 2;
+        arpMessage.arp_hdl = data.readUInt8(offset); // Header Length
+        offset += 1;
+        arpMessage.arp_prl = data.readUInt8(offset); // Protocol Address Length
+	offset += 1;
+        arpMessage.arp_op = data.readUInt16BE(offset); // Opcode;
+	offset += 2;
+        arpMessage.arp_sha = [];
+	for(let i =0; i < 6; i++) {
+            arpMessage.arp_sha[i] = data.readUInt8(offset).toString(16);
+            offset++;
+        }
+        arpMessage.arp_spa = [];
+        for(let i =0; i < 4; i++) {
+            arpMessage.arp_spa[i] = data.readUInt8(offset);
+            offset++;
+        }
+        arpMessage.arp_dha = [];
+        for(let i =0; i < 6; i++) {
+            arpMessage.arp_dha[i] = data.readUInt8(offset).toString(16);
+            offset++;
+        }
+        arpMessage.arp_dpa = [];
+        for(let i =0; i < 4; i++) {
+            arpMessage.arp_dpa[i] = data.readUInt8(offset);
+            offset++;
+        }
+        return arpMessage;
+}
+
+Socket.prototype.fromArp = function(data) {
+   let buffer = Buffer.alloc(42);
+   let offset = 0;
+   //ethernet header
+   for(let i =0; i < 6; i++) {
+       buffer.writeUInt8(parseInt(data.arp_dha[i], 16), offset);
+       offset++;
+   }
+   for(let i =0; i < 6; i++) {
+       buffer.writeUInt8(parseInt(data.arp_sha[i], 16), offset);
+       offset++;
+   }
+   buffer.writeUInt8(8, offset);
+   offset++;
+   buffer.writeUInt8(6, offset);
+   offset++;
+   // Arp header
+   buffer.writeInt16BE(data.arp_hd, offset);
+   offset += 2;
+   buffer.writeInt16BE(data.arp_pr, offset);
+   offset += 2;
+   buffer.writeUInt8(data.arp_hdl, offset);
+   offset += 1;
+   buffer.writeUInt8(data.arp_prl, offset);
+   offset += 1;
+   buffer.writeInt16BE(data.arp_op, offset);
+   offset += 2;
+   for(let i =0; i < 6; i++) {
+       buffer.writeUInt8(parseInt(data.arp_sha[i], 16), offset);
+       offset++;
+   }
+   for(let i =0; i < 4; i++) {
+       buffer.writeUInt8(parseInt(data.arp_spa[i]), offset);
+       offset++;
+   }
+   for(let i =0; i < 6; i++) {
+       buffer.writeUInt8(parseInt(data.arp_dha[i], 16), offset);
+       offset++;
+   }
+   for(let i =0; i < 4; i++) {
+       buffer.writeUInt8(parseInt(data.arp_dpa[i]), offset);
+       offset++;
+   }
+   return buffer;
+}
+
 Socket.prototype.onSendReady = function () {
 	if (this.requests.length > 0) {
 		var me = this;
@@ -99,6 +196,7 @@ Socket.prototype.onSendReady = function () {
 		try {
 			if (req.beforeCallback)
 				req.beforeCallback ();
+
 			this.wrap.send (req.buffer, req.offset, req.length,
 					req.address, function (bytes) {
 				req.afterCallback.call (me, null, bytes);
@@ -150,10 +248,10 @@ Socket.prototype.send = function (buffer, offset, length, address,
 		return this;
 	}
 
-	if (! net.isIP (address)) {
-		afterCallback.call (this, new Error ("Invalid IP address '" + address + "'"));
-		return this;
-	}
+	//if (! net.isIP (address)) {
+	//	afterCallback.call (this, new Error ("Invalid IP address '" + address + "'"));
+	//	return this;
+	//}
 
 	var req = {
 		buffer: buffer,

@@ -17,7 +17,8 @@
 #endif
 
 #include <string>
-
+#include <stdio.h>
+#include <iostream>
 #include <node.h>
 #include <node_buffer.h>
 #include <nan.h>
@@ -33,6 +34,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
+#include <linux/if_arp.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -80,6 +85,7 @@ private:
 
 	static void OnClose (uv_handle_t *handle);
 
+        static NAN_METHOD(CreateArpSocket);
 	static NAN_METHOD(Pause);
 	static NAN_METHOD(Recv);
 	static NAN_METHOD(Send);
@@ -89,6 +95,10 @@ private:
 
 	uint32_t family_;
 	uint32_t protocol_;
+	int ifindex_;
+
+        std::string iface_;
+        std::string ip_;
 
 	SOCKET poll_fd_;
 	uv_poll_t *poll_watcher_;

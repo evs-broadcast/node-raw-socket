@@ -1,8 +1,6 @@
 #ifndef RAW_CC
 #define RAW_CC
 
-#include <stdio.h>
-#include <string.h>
 #include "raw.h"
 
 #ifdef _WIN32
@@ -213,6 +211,10 @@ void ExportConstants (Handle<Object> target) {
 	Nan::Set(target, Nan::New("SocketOption").ToLocalChecked(), socket_option);
 
 	Nan::Set(socket_level, Nan::New("SOL_SOCKET").ToLocalChecked(), Nan::New<Number>(SOL_SOCKET));
+
+        Nan::Set(socket_level, Nan::New("ETH_P_ALL").ToLocalChecked(), Nan::New<Number>(ETH_P_ALL + 0));
+        Nan::Set(socket_level, Nan::New("ETH_P_ARP").ToLocalChecked(), Nan::New<Number>(ETH_P_ARP + 0));
+
 	Nan::Set(socket_level, Nan::New("IPPROTO_IP").ToLocalChecked(), Nan::New<Number>(IPPROTO_IP + 0));
 	Nan::Set(socket_level, Nan::New("IPPROTO_IPV6").ToLocalChecked(), Nan::New<Number>(IPPROTO_IPV6 + 0));
 
@@ -342,7 +344,15 @@ int SocketWrap::CreateSocket (void) {
 	if (fcntl (this->poll_fd_, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR)
 		return SOCKET_ERRNO;
 #endif
-
+	
+	if (this->family_ == AF_PACKET) {
+		struct ifreq ifr;
+		strncpy(ifr.ifr_name, this->iface_.c_str(), IFNAMSIZ);
+	        if (ioctl(this->poll_fd_, SIOCGIFINDEX, &ifr) == -1) {
+			return SOCKET_ERRNO;
+		}
+        	this->ifindex_ = ifr.ifr_ifindex;
+	}
 	poll_watcher_ = new uv_poll_t;
 	uv_poll_init_socket (uv_default_loop (), this->poll_watcher_,
 			this->poll_fd_);
@@ -466,8 +476,27 @@ NAN_METHOD(SocketWrap::New) {
 			Nan::ThrowTypeError("Address family argument must be an unsigned integer");
 			return;
 		} else {
-			if (info[1]->ToUint32 ()->Value () == 2)
-				family = AF_INET6;
+			if (info[1]->ToUint32 ()->Value () == 2) {
+                        	family = AF_INET6;
+                	}
+                	else if (info[1]->ToUint32 ()->Value () == 3) {
+                        	family = AF_PACKET;
+	                        if (socket->protocol_ == 0) {
+        	                        socket->protocol_  = htons(ETH_P_ALL);
+                	        }
+                	}
+	                else if (info[1]->ToUint32 ()->Value () == 4) {
+				if (info.Length () < 4) {
+					Nan::ThrowError("Four argument are required in Arp mode");
+					return;
+				}
+        	                family = AF_PACKET;
+                	        socket->protocol_  = htons(ETH_P_ARP);
+				String::Utf8Value iface(info[2]);
+				socket->iface_ = (*iface);
+				String::Utf8Value ip(info[3]);
+				socket->ip_ = (*ip);
+                	}
 		}
 	}
 	
@@ -544,7 +573,7 @@ NAN_METHOD(SocketWrap::Recv) {
 			? sizeof (sin6_address)
 			: sizeof (sin_address);
 #endif
-	
+
 	if (info.Length () < 2) {
 		Nan::ThrowError("Five arguments are required");
 		return;
@@ -573,7 +602,12 @@ NAN_METHOD(SocketWrap::Recv) {
 		rc = recvfrom (socket->poll_fd_, node::Buffer::Data (buffer),
 				(int) node::Buffer::Length (buffer), 0, (sockaddr *) &sin6_address,
 				&sin_length);
-	} else {
+	} 
+	else if (socket->family_ == AF_PACKET) {
+		rc = recvfrom (socket->poll_fd_, node::Buffer::Data (buffer),
+				(int) node::Buffer::Length (buffer), 0, NULL, NULL);
+	}
+        else {
 		memset (&sin_address, 0, sizeof (sin_address));
 		rc = recvfrom (socket->poll_fd_, node::Buffer::Data (buffer),
 				(int) node::Buffer::Length (buffer), 0, (sockaddr *) &sin_address,
@@ -585,17 +619,26 @@ NAN_METHOD(SocketWrap::Recv) {
 		return;
 	}
 	
-	if (socket->family_ == AF_INET6)
+	if (socket->family_ == AF_INET6) {
 		uv_ip6_name (&sin6_address, addr, 50);
-	else
+	}
+	else if (socket->family_ == AF_INET) {
 		uv_ip4_name (&sin_address, addr, 50);
+	}
 	
 	Local<Function> cb = Local<Function>::Cast (info[1]);
 	const unsigned argc = 3;
 	Local<Value> argv[argc];
 	argv[0] = info[0];
 	argv[1] = Nan::New<Number>(rc);
-	argv[2] = Nan::New(addr).ToLocalChecked();
+
+	if (socket->family_ != AF_PACKET) {
+		argv[2] = Nan::New(addr).ToLocalChecked();
+	}
+	else {
+		argv[2] = Nan::New<Number>(rc);
+	}
+
 	cb->Call (socket->handle(), argc, argv);
 	
 	info.GetReturnValue().Set(info.This());
@@ -610,7 +653,7 @@ NAN_METHOD(SocketWrap::Send) {
 	uint32_t length;
 	int rc;
 	char *data;
-	
+
 	if (info.Length () < 5) {
 		Nan::ThrowError("Five arguments are required");
 		return;
@@ -631,8 +674,8 @@ NAN_METHOD(SocketWrap::Send) {
 		return;
 	}
 
-	if (! info[3]->IsString ()) {
-		Nan::ThrowTypeError("Address argument must be a string");
+	if ((! info[3]->IsString ())&&(! info[3]->IsObject())) {
+		Nan::ThrowTypeError("Address argument must be a string or Object for Arp.");
 		return;
 	}
 
@@ -652,7 +695,7 @@ NAN_METHOD(SocketWrap::Send) {
 	length = info[2]->ToUint32 ()->Value ();
 
 	data = node::Buffer::Data (buffer) + offset;
-	
+
 	if (socket->family_ == AF_INET6) {
 #if UV_VERSION_MAJOR > 0
 		struct sockaddr_in6 addr;
@@ -665,7 +708,7 @@ NAN_METHOD(SocketWrap::Send) {
 		
 		rc = sendto (socket->poll_fd_, data, length, 0,
 				(struct sockaddr *) &addr, sizeof (addr));
-	} else {
+	} else if (socket->family_ == AF_INET) {
 #if UV_VERSION_MAJOR > 0
 		struct sockaddr_in addr;
 		uv_ip4_addr(*Nan::Utf8String(info[3]), 0, &addr);
@@ -677,7 +720,32 @@ NAN_METHOD(SocketWrap::Send) {
 		rc = sendto (socket->poll_fd_, data, length, 0,
 				(struct sockaddr *) &addr, sizeof (addr));
 	}
-	
+	else {
+		struct sockaddr_ll socket_address;
+		Local<Object> mac = info[3]->ToObject ();
+                char *dest = node::Buffer::Data (mac);
+
+                if (node::Buffer::Length(mac) < 6) {
+                     Nan::ThrowError("Five arguments are required");     
+                     return;
+		}
+		for(int i = 0; i < 6; i++) {
+			socket_address.sll_addr[i] = dest[i];
+		}
+		socket_address.sll_family = PF_PACKET;
+        	socket_address.sll_protocol = htons(ETH_P_ARP);
+	        socket_address.sll_ifindex = socket->ifindex_;
+        	socket_address.sll_hatype = ARPHRD_ETHER;
+	        socket_address.sll_pkttype = 0; //PACKET_OTHERHOST;
+        	socket_address.sll_halen = 6;
+	        socket_address.sll_addr[6] = 0x00;
+        	socket_address.sll_addr[7] = 0x00;
+
+		rc = sendto(socket->poll_fd_, data, length, 0, 
+				(struct sockaddr*)&socket_address, sizeof(socket_address));
+
+	}
+
 	if (rc == SOCKET_ERROR) {
 		Nan::ThrowError(raw_strerror (SOCKET_ERRNO));
 		return;
