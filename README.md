@@ -486,10 +486,10 @@ after the data has been sent:
 
     socket.send (buffer, 0, buffer.length, target, beforeSend, afterSend);
 
-To send an Arp response message, you can use following code.
+To send an Arp response message, you can use following code:
 
-   let socket = raw.createSocket({addressFamily: Arp.AddressFamily.Arp, iface: "eth0", ip: "10.193.31.239"});
-   socket.on("message", (buffer) => {
+    let socket = raw.createSocket({addressFamily: Arp.AddressFamily.Arp, iface: "eth0", ip: "10.193.31.239"});
+    socket.on("message", (buffer) => {
       const msg = socket.parseArp(buffer, 14);
       let dest = Buffer.alloc(6);
       for(let i = 0; i < 6; i++) {
@@ -503,7 +503,7 @@ To send an Arp response message, you can use following code.
       msg.arp_spa = tmp;
       const response = socket.fromArp(msg);
       socket.send(response, 0, response.length, dest, (rc) => {console.log("response sent.", rc);});
-  });
+    });
 
 ## socket.setOption (level, option, buffer, length)
 
