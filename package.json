@@ -1,27 +1,31 @@
 {
   "name": "raw-socket",
-  "version": "1.6.0",
+  "version": "1.6.2",
   "description": "Raw sockets for Node.js.",
   "main": "index.js",
   "directories": {
     "example": "example"
   },
   "dependencies": {
-    "nan": "^2.10.0"
+    "nan": "2.10.*"
   },
-  "contributors": [ 
+  "contributors": [
     {
       "name": "Stephen Vickers",
-      "email": "stephen.vickers.sv@gmail.com"
+      "email": "stephen.vickers@nospaceships.com"
     },
+    {
+      "name": "NoSpaceships Ltd",
+      "email": "hello@nospaceships.com"
+    } ,
     {
       "name": "Gilles Dufour",
       "email": "dufour.gilles@gmail.com"
-    } 
+    }
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/stephenwvickers/node-raw-socket.git"
+    "url": "git://github.com/nospaceships/node-raw-socket.git"
   },
   "keywords": [
     "checksum",
@@ -38,6 +42,6 @@
     "socket",
     "sockets"
   ],
-  "author": "Stephen Vickers <stephen.vickers.sv@gmail.com>",
+  "author": "NoSpaceships Ltd <hello@nospaceships.com>",
   "license": "MIT"
 }

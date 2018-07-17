@@ -65,7 +65,7 @@ NAN_METHOD(CreateChecksum) {
 		return;
 	}
 	
-	uint32_t start_with = info[0]->ToUint32 ()->Value ();
+	uint32_t start_with = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 
 	if (start_with > 65535) {
 		Nan::ThrowRangeError("Start with argument cannot be larger than 65535");
@@ -87,7 +87,7 @@ NAN_METHOD(CreateChecksum) {
 			Nan::ThrowTypeError("Offset argument must be an unsigned integer");
 			return;
 		}
-		offset = info[2]->ToUint32 ()->Value ();
+		offset = Nan::To<Uint32>(info[2]).ToLocalChecked()->Value();
 		if (offset >= length) {
 			Nan::ThrowRangeError("Offset argument must be smaller than length of the buffer");
 			return;
@@ -99,7 +99,7 @@ NAN_METHOD(CreateChecksum) {
 			Nan::ThrowTypeError("Length argument must be an unsigned integer");
 			return;
 		}
-		unsigned int new_length = info[3]->ToUint32 ()->Value ();
+		unsigned int new_length = Nan::To<Uint32>(info[3]).ToLocalChecked()->Value();
 		if (new_length > length) {
 			Nan::ThrowRangeError("Length argument must be smaller than length of the buffer");
 			return;
@@ -128,7 +128,7 @@ NAN_METHOD(Htonl) {
 		return;
 	}
 
-	unsigned int number = info[0]->ToUint32 ()->Value ();
+	unsigned int number = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 	Local<Uint32> converted = Nan::New<Uint32>((unsigned int) htonl (number));
 
 	info.GetReturnValue().Set(converted);
@@ -147,7 +147,7 @@ NAN_METHOD(Htons) {
 		return;
 	}
 	
-	unsigned int number = info[0]->ToUint32 ()->Value ();
+	unsigned int number = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 	
 	if (number > 65535) {
 		Nan::ThrowRangeError("Number cannot be larger than 65535");
@@ -172,7 +172,7 @@ NAN_METHOD(Ntohl) {
 		return;
 	}
 
-	unsigned int number = info[0]->ToUint32 ()->Value ();
+	unsigned int number = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 	Local<Uint32> converted = Nan::New<Uint32>((unsigned int) ntohl (number));
 
 	info.GetReturnValue().Set(converted);
@@ -191,7 +191,7 @@ NAN_METHOD(Ntohs) {
 		return;
 	}
 	
-	unsigned int number = info[0]->ToUint32 ()->Value ();
+	unsigned int number = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 	
 	if (number > 65535) {
 		Nan::ThrowRangeError("Number cannot be larger than 65535");
@@ -344,7 +344,7 @@ int SocketWrap::CreateSocket (void) {
 	if (fcntl (this->poll_fd_, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR)
 		return SOCKET_ERRNO;
 #endif
-	
+
 	if (this->family_ == AF_PACKET) {
 		struct ifreq ifr;
 		strncpy(ifr.ifr_name, this->iface_.c_str(), IFNAMSIZ);
@@ -384,8 +384,8 @@ NAN_METHOD(SocketWrap::GetOption) {
 		return;
 	}
 
-	int level = info[0]->ToInt32 ()->Value ();
-	int option = info[1]->ToInt32 ()->Value ();
+	int level = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
+	int option = Nan::To<Uint32>(info[1]).ToLocalChecked()->Value();
 	SOCKET_OPT_TYPE val = NULL;
 	unsigned int ival = 0;
 	SOCKET_LEN_TYPE len;
@@ -468,7 +468,7 @@ NAN_METHOD(SocketWrap::New) {
 		Nan::ThrowTypeError("Protocol argument must be an unsigned integer");
 		return;
 	} else {
-		socket->protocol_ = info[0]->ToUint32 ()->Value ();
+		socket->protocol_ = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
 	}
 
 	if (info.Length () > 1) {
@@ -476,7 +476,7 @@ NAN_METHOD(SocketWrap::New) {
 			Nan::ThrowTypeError("Address family argument must be an unsigned integer");
 			return;
 		} else {
-			if (info[1]->ToUint32 ()->Value () == 2) {
+			if (Nan::To<Uint32>(info[1]).ToLocalChecked()->Value() == 2) {
                         	family = AF_INET6;
                 	}
                 	else if (info[1]->ToUint32 ()->Value () == 3) {
@@ -602,7 +602,7 @@ NAN_METHOD(SocketWrap::Recv) {
 		rc = recvfrom (socket->poll_fd_, node::Buffer::Data (buffer),
 				(int) node::Buffer::Length (buffer), 0, (sockaddr *) &sin6_address,
 				&sin_length);
-	} 
+	}
 	else if (socket->family_ == AF_PACKET) {
 		rc = recvfrom (socket->poll_fd_, node::Buffer::Data (buffer),
 				(int) node::Buffer::Length (buffer), 0, NULL, NULL);
@@ -625,7 +625,7 @@ NAN_METHOD(SocketWrap::Recv) {
 	else if (socket->family_ == AF_INET) {
 		uv_ip4_name (&sin_address, addr, 50);
 	}
-	
+
 	Local<Function> cb = Local<Function>::Cast (info[1]);
 	const unsigned argc = 3;
 	Local<Value> argv[argc];
@@ -691,8 +691,8 @@ NAN_METHOD(SocketWrap::Send) {
 	}
 	
 	buffer = info[0]->ToObject ();
-	offset = info[1]->ToUint32 ()->Value ();
-	length = info[2]->ToUint32 ()->Value ();
+	offset = Nan::To<Uint32>(info[1]).ToLocalChecked()->Value();
+	length = Nan::To<Uint32>(info[2]).ToLocalChecked()->Value();
 
 	data = node::Buffer::Data (buffer) + offset;
 
@@ -726,7 +726,7 @@ NAN_METHOD(SocketWrap::Send) {
                 char *dest = node::Buffer::Data (mac);
 
                 if (node::Buffer::Length(mac) < 6) {
-                     Nan::ThrowError("Five arguments are required");     
+                     Nan::ThrowError("Five arguments are required");
                      return;
 		}
 		for(int i = 0; i < 6; i++) {
@@ -741,7 +741,7 @@ NAN_METHOD(SocketWrap::Send) {
 	        socket_address.sll_addr[6] = 0x00;
         	socket_address.sll_addr[7] = 0x00;
 
-		rc = sendto(socket->poll_fd_, data, length, 0, 
+		rc = sendto(socket->poll_fd_, data, length, 0,
 				(struct sockaddr*)&socket_address, sizeof(socket_address));
 
 	}
@@ -780,8 +780,8 @@ NAN_METHOD(SocketWrap::SetOption) {
 		return;
 	}
 
-	int level = info[0]->ToInt32 ()->Value ();
-	int option = info[1]->ToInt32 ()->Value ();
+	int level = Nan::To<Uint32>(info[0]).ToLocalChecked()->Value();
+	int option = Nan::To<Uint32>(info[1]).ToLocalChecked()->Value();
 	SOCKET_OPT_TYPE val = NULL;
 	unsigned int ival = 0;
 	SOCKET_LEN_TYPE len;
@@ -800,7 +800,7 @@ NAN_METHOD(SocketWrap::SetOption) {
 			return;
 		}
 
-		len = info[3]->ToInt32 ()->Value ();
+		len = Nan::To<Uint32>(info[3]).ToLocalChecked()->Value();
 
 		if (len > node::Buffer::Length (buffer)) {
 			Nan::ThrowTypeError("Length argument is larger than buffer length");
@@ -812,7 +812,7 @@ NAN_METHOD(SocketWrap::SetOption) {
 			return;
 		}
 
-		ival = info[2]->ToUint32 ()->Value ();
+		ival = Nan::To<Uint32>(info[2]).ToLocalChecked()->Value();
 		len = 4;
 	}
 

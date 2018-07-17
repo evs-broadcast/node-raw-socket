@@ -65,6 +65,12 @@ subject can be found in the MAC OS X [documentation][mac-osx-icmp-ref].
 The appropriate operating system documentation should be consulted to
 understand how raw sockets will behave before attempting to use this module.
 
+# Packet Loss Under Load
+
+Under load raw socket can experience packet loss, this may vary from system to
+system depending on hardware.  On some systems the `SO_RCVBUF` socket option to
+will help to alleviate packet loss.
+
 # Keeping The [Node.js][nodejs] Event Loop Alive
 
 This module uses the `libuv` library to integrate into the [Node.js][nodejs]
@@ -573,12 +579,6 @@ used to send the packet.
 
 Example programs are included under the modules `example` directory.
 
-# Bugs & Known Issues
-
-None, yet!
-
-Bug reports should be sent to <stephen.vickers.sv@gmail.com>.
-
 # Changes
 
 ## Version 1.0.0 - 29/01/2013
@@ -725,13 +725,29 @@ Bug reports should be sent to <stephen.vickers.sv@gmail.com>.
 
  * Explicitly publish to npm using UNIX line endings
 
-# Roadmap
+## Version 1.5.2 - 11/01/2018
 
-Suggestions and requirements should be sent to <stephen.vickers.sv@gmail.com>.
+ * Add note to README.md on how to reduce packet loss using the `SO_RCVBUF`
+   socket option
+ * Address warnings for `v8::Value::ToUint32 was declared deprecated`
+
+## Version 1.6.0 - 02/05/2018
+
+ * Support Node.js 10
+
+## Version 1.6.1 - 06/06/2018
+
+ * Set NoSpaceships Ltd to be the owner and maintainer
+
+## Version 1.6.2 - 07/06/2018
+
+ * Remove redundant sections from README.md
 
 # License
 
-Copyright (c) 2013 Stephen Vickers
+Copyright (c) 2018 NoSpaceships Ltd <hello@nospaceships.com>
+
+Copyright (c) 2013 Stephen Vickers <stephen.vickers.sv@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -750,7 +766,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
-# Author
-
-Stephen Vickers <stephen.vickers.sv@gmail.com>
