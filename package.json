@@ -17,10 +17,14 @@
     {
       "name": "NoSpaceships Ltd",
       "email": "hello@nospaceships.com"
-    } ,
+    },
     {
       "name": "Gilles Dufour",
       "email": "dufour.gilles@gmail.com"
+    },
+    {
+      "name": "Thomas Silvestre",
+      "email": "silvestre.t@gmail.com"
     }
   ],
   "repository": {
